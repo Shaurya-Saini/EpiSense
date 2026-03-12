@@ -1,0 +1,74 @@
+# Python Virtual Environment
+venv/
+env/
+ENV/
+.venv
+
+# Python Cache and Compiled Files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Database and Data Files
+Backend/data/
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.code-workspace
+.vim/
+
+# Node.js (Frontend)
+Frontend/episense/node_modules/
+Frontend/episense/dist/
+Frontend/episense/.dist/
+Frontend/episense/build/
+Frontend/episense/coverage/
+
+# IDE specific for Node
+Frontend/episense/.eslintcache
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# OS Files
+Thumbs.db
+.DS_Store
+
+# Misc
+.pytest_cache/
+.coverage
+htmlcov/
+.hypothesis/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Local Testing
+*.log
