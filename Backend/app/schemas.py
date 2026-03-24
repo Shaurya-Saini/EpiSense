@@ -10,6 +10,18 @@ class SensorData(BaseModel):
     tds: float = Field(..., description="Total Dissolved Solids (ppm)")
     turbidity: float = Field(..., description="Turbidity (NTU)")
     temperature: float = Field(..., description="Water temperature (°C)")
+    zone_id: str = Field("zone_001", description="Identifier of the monitored zone")
+
+
+class SymptomReportData(BaseModel):
+    """Incoming clinic symptom report data."""
+    zone_id: str
+    population: int
+    fever: int
+    diarrhea: int
+    vomiting: int
+    rash: int
+    respiratory: int
 
 
 class PredictionResult(BaseModel):
@@ -22,6 +34,7 @@ class PredictionResult(BaseModel):
 class ReadingRecord(BaseModel):
     """A single stored reading with sensor data, prediction, and timestamp."""
     id: int
+    zone_id: str
     timestamp: str
     tds: float
     turbidity: float
@@ -29,6 +42,38 @@ class ReadingRecord(BaseModel):
     risk_level: str
     confidence: float
     potability: int
+
+
+class SymptomReportRecord(BaseModel):
+    """A single stored symptom report with calculated S_score."""
+    id: int
+    zone_id: str
+    timestamp: str
+    population: int
+    fever: int
+    diarrhea: int
+    vomiting: int
+    rash: int
+    respiratory: int
+    s_score: float
+
+
+class AlertTier(BaseModel):
+    level: str
+    diseases: list[str]
+    precautions: list[str]
+
+
+class ZoneUpdate(BaseModel):
+    """WebSocket update schema for a specific zone."""
+    type: str = "ZONE_UPDATE"
+    zone_id: str
+    timestamp: str
+    e_score: float
+    s_score_decayed: float
+    ori: float
+    alerts: AlertTier
+    latest_reading: Optional[ReadingRecord] = None
 
 
 class SensorResponse(BaseModel):

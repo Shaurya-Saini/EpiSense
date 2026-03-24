@@ -99,6 +99,7 @@ Open a terminal inside the `Frontend/episense/` directory:
 ```bash
 cd Frontend/episense
 npm install
+npm install react-router-dom leaflet react-leaflet leaflet.heat @types/leaflet @types/leaflet.heat
 ```
 
 ### 2.2 Start Development Server

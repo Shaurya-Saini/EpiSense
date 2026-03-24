@@ -30,7 +30,9 @@ const char* WIFI_SSID     = "YOUR_WIFI_SSID";
 const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
 
 // Backend server URL — update with your server's IP address
-const char* SERVER_URL = "http://192.168.1.100:8000/api/sensor-data";
+const char* SERVER_URL = "http://192.168.1.100:8000/api/sensor-data";\n
+// Zone ID for this sensor node
+const char* ZONE_ID = "zone_001";
 
 // Sensor reading interval (milliseconds)
 const unsigned long READ_INTERVAL = 10000;  // 10 seconds
@@ -199,6 +201,7 @@ void sendData(float tds, float turbidity, float temperature) {
     doc["tds"] = round(tds * 100) / 100.0;
     doc["turbidity"] = round(turbidity * 100) / 100.0;
     doc["temperature"] = round(temperature * 100) / 100.0;
+    doc["zone_id"] = ZONE_ID;
 
     String payload;
     serializeJson(doc, payload);
