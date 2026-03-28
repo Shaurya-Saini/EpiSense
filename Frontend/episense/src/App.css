@@ -92,14 +92,16 @@
   display: flex;
   gap: 2rem;
   align-items: stretch;
+  flex-wrap: wrap;
 }
 .risk-container {
-  flex: 0 0 350px;
+  flex: 1 1 350px;
 }
 .sensor-grid-horizontal {
-  display: flex;
-  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 1.5rem;
+  width: 100%;
 }
 
 .sensor-card {
@@ -163,13 +165,13 @@
 
 /* ── Top Layout & Explainer ──────────────────────── */
 .top-layout {
-  display: flex;
+  display: grid;
+  grid-template-columns: 450px 1fr;
   gap: 2rem;
   margin-bottom: 2rem;
-  height: 350px;
+  min-height: 350px;
 }
 .ori-explainer-card {
-  flex: 0 0 450px;
   background: var(--bg-card);
   backdrop-filter: blur(16px);
   border: 1px solid var(--border-card);
@@ -261,9 +263,10 @@
   display: flex;
   gap: 2rem;
   align-items: stretch;
+  flex-wrap: wrap;
 }
 .zone-ori-display {
-  flex: 0 0 350px;
+  flex: 1 1 350px;
   background: rgba(6, 182, 212, 0.05);
   border: 1px solid rgba(6, 182, 212, 0.3);
   padding: 1.5rem;
@@ -296,12 +299,13 @@
 .zone-risk-badge .risk-badge { width: 100%; }
 
 .charts-and-logs {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
   gap: 2rem;
   margin-top: 2rem;
 }
-.chart-sec { flex: 1.5; }
-.logs-sec { flex: 1; }
+.chart-sec { min-width: 0; }
+.logs-sec { min-width: 0; }
 
 .history-table__scroll {
   overflow-x: auto;
@@ -491,4 +495,45 @@ tr:hover { background: rgba(255,255,255,0.02); }
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Interactive & Responsive adjustments ────────────────── */
+@media (max-width: 1024px) {
+  .top-layout {
+    grid-template-columns: 1fr;
+  }
+  .map-view-hero {
+    min-height: 400px;
+  }
+  .charts-and-logs {
+    grid-template-columns: 1fr;
+  }
+  .header {
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .header__title {
+    font-size: 2rem;
+  }
+  .dashboard-container {
+    padding: 1rem;
+  }
+  .ori-big-number {
+    font-size: 3rem;
+  }
+  .symptom-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .symptom-grid {
+    grid-template-columns: 1fr;
+  }
+  .sensor-grid-horizontal {
+    grid-template-columns: 1fr;
+  }
 }
