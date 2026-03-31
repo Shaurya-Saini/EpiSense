@@ -72,3 +72,6 @@ dmypy.json
 
 # Local Testing
 *.log
+
+# ML Model Files (too large for GitHub)
+Backend/model/
