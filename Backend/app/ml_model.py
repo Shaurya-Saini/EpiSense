@@ -5,27 +5,45 @@ import joblib
 import numpy as np
 from typing import Tuple
 
-# Path to the saved model file
+# Path to the saved model and pipeline files
 MODEL_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "model")
 MODEL_PATH = os.path.join(MODEL_DIR, "model.joblib")
+PIPELINE_PATH = os.path.join(MODEL_DIR, "pipeline.joblib")
 
 _model = None
+_pipeline = None
 
 
 def load_model():
-    """Load the trained ML model from disk."""
-    global _model
+    """Load the trained ML model and preprocessing pipeline from disk."""
+    global _model, _pipeline
+
     if not os.path.exists(MODEL_PATH):
         print(f"[WARNING] Model file not found at {MODEL_PATH}. Using fallback rule-based prediction.")
         _model = None
+        _pipeline = None
         return
+
     _model = joblib.load(MODEL_PATH)
     print(f"[INFO] ML model loaded successfully from {MODEL_PATH}")
+
+    if os.path.exists(PIPELINE_PATH):
+        _pipeline = joblib.load(PIPELINE_PATH)
+        print(f"[INFO] Preprocessing pipeline loaded from {PIPELINE_PATH}")
+    else:
+        _pipeline = None
+        print("[WARNING] Pipeline file not found. Raw features will be passed directly to model.")
 
 
 def predict_risk(tds: float, turbidity: float, temperature: float) -> Tuple[str, float, int]:
     """
     Predict outbreak risk based on sensor readings.
+
+    The model expects 3 features in this order: [Solids, Turbidity, ph]
+    Sensor mapping:
+        - TDS sensor       → Solids
+        - Turbidity sensor  → Turbidity
+        - Temperature sensor → ph (proxy)
 
     Returns:
         Tuple of (risk_level, confidence, potability)
@@ -34,8 +52,16 @@ def predict_risk(tds: float, turbidity: float, temperature: float) -> Tuple[str,
         - potability: 0 (not potable / risky) or 1 (potable / safe)
     """
     if _model is not None:
-        # Use trained ML model
+        # Build raw feature array: [Solids, Turbidity, ph]
         features = np.array([[tds, turbidity, temperature]])
+
+        # Apply preprocessing pipeline if available
+        if _pipeline is not None:
+            imputer = _pipeline["imputer"]
+            scaler = _pipeline["scaler"]
+            features = imputer.transform(features)
+            features = scaler.transform(features)
+
         prediction = _model.predict(features)[0]
         probabilities = _model.predict_proba(features)[0]
         confidence = float(np.max(probabilities))
