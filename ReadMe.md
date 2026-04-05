@@ -8,6 +8,8 @@ EpiSense is an advanced epidemiological surveillance system that bridges the gap
 
 Traditional public health surveillance suffers from immense temporal lag due to its reliance on laboratory-confirmed diagnoses. EpiSense circumvents this latency by functioning as an **Early Warning System (EWS)** that triggers off leading indicators. 
 
+![Architecture](Episense_architecture.png)
+
 ### 1. Environmental Determinants of Health
 Contamination of ground and surface water represents a direct vector for diseases like Cholera and Typhoid. The system continuously polls:
 - **Total Dissolved Solids (TDS) & Turbidity**: High particulate matter serves as a physical reservoir and shield for pathogens.
