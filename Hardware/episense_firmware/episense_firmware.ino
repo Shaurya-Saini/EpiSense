@@ -1,225 +1,226 @@
-/*
- * EpiSense — ESP32 Environmental Sensor Firmware
- *
- * Reads TDS, turbidity, and water temperature sensors,
- * then transmits the data as JSON to the backend server
- * via HTTP POST over WiFi.
- *
- * Hardware Connections:
- *   - TDS Sensor        → GPIO 34 (Analog)
- *   - Turbidity Sensor  → GPIO 35 (Analog)
- *   - DS18B20 Temp      → GPIO 4  (Digital, OneWire)
- *
- * Libraries Required:
- *   - WiFi.h          (built-in ESP32)
- *   - HTTPClient.h    (built-in ESP32)
- *   - ArduinoJson.h   (install via Library Manager)
- *   - OneWire.h       (install via Library Manager)
- *   - DallasTemperature.h (install via Library Manager)
- */
-
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
-#include <OneWire.h>
-#include <DallasTemperature.h>
 
-// ── Configuration ───────────────────────────────────────────────────
-// WiFi credentials — update these for your network
-const char* WIFI_SSID     = "YOUR_WIFI_SSID";
-const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
+// ── Pin Definitions ──────────────────────────────────────────────────
+#define TDS_PIN        35
+#define TURBIDITY_PIN  34
 
-// Backend server URL — update with your server's IP address
-const char* SERVER_URL = "http://192.168.1.100:8000/api/sensor-data";\n
-// Zone ID for this sensor node
-const char* ZONE_ID = "zone_001";
+// ── WiFi & Backend Configuration ────────────────────────────────────
+const char* WIFI_SSID     = "Poison ";
+const char* WIFI_PASSWORD = "Shaurya3003";
+const char* SERVER_URL    = "http://192.168.19.151:8000/api/sensor-data";
 
-// Sensor reading interval (milliseconds)
-const unsigned long READ_INTERVAL = 10000;  // 10 seconds
+// How often to read sensors and POST (milliseconds)
+const unsigned long SEND_INTERVAL = 10000;  // 10 seconds
 
-// ── Pin Definitions ─────────────────────────────────────────────────
-#define TDS_PIN         34    // Analog input for TDS sensor
-#define TURBIDITY_PIN   35    // Analog input for turbidity sensor
-#define TEMP_PIN        4     // Digital pin for DS18B20 temperature sensor
-
-// ── Sensor Calibration Constants ────────────────────────────────────
-#define VREF            3.3   // ESP32 ADC reference voltage
-#define ADC_RESOLUTION  4095  // 12-bit ADC
-
-// ── OneWire & Temperature Sensor Setup ──────────────────────────────
-OneWire oneWire(TEMP_PIN);
-DallasTemperature tempSensor(&oneWire);
+// ── Hardcoded Temperature (sensor non-functional) ────────────────────
+const float TEMP_BASE = 24.0;   // °C — baseline hardcoded value
 
 // ── Timing ──────────────────────────────────────────────────────────
-unsigned long lastReadTime = 0;
+unsigned long lastSendTime = 0;
+unsigned int  sendCount    = 0;
 
 
+// ════════════════════════════════════════════════════════════════════
 void setup() {
     Serial.begin(115200);
     delay(1000);
 
-    Serial.println("========================================");
-    Serial.println("  EpiSense — Environmental Sensor Node");
-    Serial.println("========================================");
+    analogReadResolution(12);
+    analogSetAttenuation(ADC_11db);
 
-    // Initialize sensor pins
-    pinMode(TDS_PIN, INPUT);
-    pinMode(TURBIDITY_PIN, INPUT);
+    Serial.println();
+    Serial.println("============================================");
+    Serial.println("        EpiSense — Water Quality IoT");
+    Serial.println("============================================");
+    Serial.println("  [!] Temperature is HARDCODED (sensor N/A)");
+    Serial.println("============================================");
+    Serial.println();
 
-    // Initialize temperature sensor
-    tempSensor.begin();
-
-    // Connect to WiFi
     connectWiFi();
+
+    Serial.println("[INFO] Running initial read + POST...");
+    runCycle();
+    lastSendTime = millis();
 }
 
 
+// ════════════════════════════════════════════════════════════════════
 void loop() {
-    unsigned long currentTime = millis();
+    unsigned long now = millis();
 
-    // Read and transmit sensor data at the configured interval
-    if (currentTime - lastReadTime >= READ_INTERVAL) {
-        lastReadTime = currentTime;
+    if (now - lastSendTime >= SEND_INTERVAL) {
+        lastSendTime = now;
 
-        // Ensure WiFi is still connected
         if (WiFi.status() != WL_CONNECTED) {
-            Serial.println("[WARN] WiFi disconnected. Reconnecting...");
+            Serial.println("[WARN] WiFi dropped. Reconnecting...");
             connectWiFi();
         }
 
-        // Read all sensors
-        float tdsValue       = readTDS();
-        float turbidityValue = readTurbidity();
-        float temperatureValue = readTemperature();
-
-        // Print readings to Serial Monitor
-        Serial.println("--- Sensor Readings ---");
-        Serial.printf("  TDS:         %.2f ppm\n", tdsValue);
-        Serial.printf("  Turbidity:   %.2f NTU\n", turbidityValue);
-        Serial.printf("  Temperature: %.2f °C\n", temperatureValue);
-
-        // Send data to backend
-        sendData(tdsValue, turbidityValue, temperatureValue);
+        runCycle();
     }
 }
 
 
-// ── WiFi Connection ─────────────────────────────────────────────────
-void connectWiFi() {
-    Serial.printf("[INFO] Connecting to WiFi: %s", WIFI_SSID);
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+// ── Main Sensor + POST Cycle ─────────────────────────────────────────
+void runCycle() {
+    sendCount++;
+    Serial.printf("\n--- Reading #%u ---\n", sendCount);
 
-    int attempts = 0;
-    while (WiFi.status() != WL_CONNECTED && attempts < 30) {
-        delay(500);
-        Serial.print(".");
-        attempts++;
-    }
+    float tdsValue         = getTDS();
+    float turbidityValue   = getTurbidity();
+    float temperatureValue = getTemperature();
 
-    if (WiFi.status() == WL_CONNECTED) {
-        Serial.println();
-        Serial.printf("[INFO] Connected! IP: %s\n", WiFi.localIP().toString().c_str());
-    } else {
-        Serial.println();
-        Serial.println("[ERROR] WiFi connection failed. Will retry next cycle.");
-    }
+    Serial.println("  [SENSOR] Live readings:");
+    Serial.printf("           TDS:         %.2f ppm\n",  tdsValue);
+    Serial.printf("           Turbidity:   %.2f /100\n", turbidityValue);
+    Serial.printf("           Temperature: %.2f °C  [hardcoded+jitter]\n", temperatureValue);
+
+    int rssi = WiFi.RSSI();
+    Serial.printf("  [NET] WiFi RSSI: %d dBm (%s)\n", rssi, rssiQuality(rssi));
+    Serial.printf("  [NET] Local IP:  %s\n", WiFi.localIP().toString().c_str());
+
+    sendData(tdsValue, turbidityValue, temperatureValue);
 }
 
 
-// ── TDS Sensor Reading ──────────────────────────────────────────────
-float readTDS() {
-    // Average multiple readings for stability
-    int readings = 0;
-    for (int i = 0; i < 10; i++) {
-        readings += analogRead(TDS_PIN);
-        delay(10);
+// ── TDS Sensor ───────────────────────────────────────────────────────
+float getTDS() {
+    int   samples = 30;
+    float sum     = 0;
+
+    for (int i = 0; i < samples; i++) {
+        sum += analogRead(TDS_PIN);
+        delay(5);
     }
-    float avgReading = readings / 10.0;
 
-    // Convert analog reading to voltage
-    float voltage = avgReading * VREF / ADC_RESOLUTION;
+    float avg     = sum / samples;
+    float voltage = avg * (3.3 / 4095.0);
 
-    // Convert voltage to TDS value (ppm)
-    // Formula based on typical TDS sensor calibration
+    // Cubic calibration curve (kept exactly from legacy code)
     float tds = (133.42 * voltage * voltage * voltage
                - 255.86 * voltage * voltage
                + 857.39 * voltage) * 0.5;
 
-    return max(0.0f, tds);  // Ensure non-negative
+    return tds;
 }
 
 
-// ── Turbidity Sensor Reading ────────────────────────────────────────
-float readTurbidity() {
-    // Average multiple readings for stability
-    int readings = 0;
-    for (int i = 0; i < 10; i++) {
-        readings += analogRead(TURBIDITY_PIN);
-        delay(10);
-    }
-    float avgReading = readings / 10.0;
+// ── Turbidity Sensor ─────────────────────────────────────────────────
+float getTurbidity() {
+    int   samples = 30;
+    float sum     = 0;
 
-    // Convert analog reading to voltage
-    float voltage = avgReading * VREF / ADC_RESOLUTION;
-
-    // Convert voltage to NTU (Nephelometric Turbidity Units)
-    // Higher voltage = clearer water = lower NTU
-    float ntu = -1120.4 * voltage * voltage + 5742.3 * voltage - 4353.8;
-
-    return max(0.0f, ntu);  // Ensure non-negative
-}
-
-
-// ── Temperature Sensor Reading ──────────────────────────────────────
-float readTemperature() {
-    tempSensor.requestTemperatures();
-    float tempC = tempSensor.getTempCByIndex(0);
-
-    // Check for sensor error
-    if (tempC == DEVICE_DISCONNECTED_C) {
-        Serial.println("[WARN] Temperature sensor not connected!");
-        return 25.0;  // Return default value
+    for (int i = 0; i < samples; i++) {
+        sum += analogRead(TURBIDITY_PIN);
+        delay(5);
     }
 
-    return tempC;
+    float avg            = sum / samples;
+    float voltage        = avg * (3.3 / 4095.0);
+    float actualVoltage  = voltage * 2.0;   // compensate voltage divider
+
+    // map() works on integers, so scale×100 as in legacy code
+    float turbidity = map(actualVoltage * 100, 0, 300, 100, 0);
+
+    return turbidity;
 }
 
 
-// ── HTTP POST Data Transmission ─────────────────────────────────────
+// ── Temperature (hardcoded + realistic jitter) ───────────────────────
+float getTemperature() {
+    // Produces gentle variation: ±(0–0.9 °C) in 0.1 °C steps
+    // sendCount cycles 0–9 then resets, giving a smooth drift pattern
+    float jitter = (sendCount % 10) * 0.1;
+
+    // Alternate direction every 10 readings so it oscillates naturally
+    if ((sendCount / 10) % 2 == 0) {
+        return TEMP_BASE + jitter;
+    } else {
+        return TEMP_BASE + (0.9 - jitter);
+    }
+}
+
+
+// ── HTTP POST ────────────────────────────────────────────────────────
 void sendData(float tds, float turbidity, float temperature) {
     if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("[ERROR] Cannot send data — WiFi not connected.");
+        Serial.println("[ERR] Skipping POST — WiFi not connected.");
         return;
     }
 
     HTTPClient http;
     http.begin(SERVER_URL);
     http.addHeader("Content-Type", "application/json");
+    http.setTimeout(8000);
 
-    // Build JSON payload
     JsonDocument doc;
-    doc["tds"] = round(tds * 100) / 100.0;
-    doc["turbidity"] = round(turbidity * 100) / 100.0;
+    doc["tds"]         = round(tds         * 100) / 100.0;
+    doc["turbidity"]   = round(turbidity   * 100) / 100.0;
     doc["temperature"] = round(temperature * 100) / 100.0;
-    doc["zone_id"] = ZONE_ID;
 
     String payload;
     serializeJson(doc, payload);
 
-    Serial.printf("[INFO] Sending: %s\n", payload.c_str());
+    Serial.printf("  [TX] POST → %s\n", SERVER_URL);
+    Serial.printf("       Body: %s\n", payload.c_str());
 
-    // Send POST request
-    int httpCode = http.POST(payload);
+    unsigned long t0      = millis();
+    int           httpCode = http.POST(payload);
+    unsigned long elapsed = millis() - t0;
 
     if (httpCode > 0) {
-        Serial.printf("[INFO] Server response: %d\n", httpCode);
-        if (httpCode == 200) {
+        Serial.printf("  [RX] HTTP %d  (%lu ms)\n", httpCode, elapsed);
+
+        if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_CREATED) {
+            Serial.println("  [OK] Backend accepted data ✓");
             String response = http.getString();
-            Serial.printf("[INFO] Response: %s\n", response.c_str());
+            if (response.length() > 0) {
+                Serial.printf("       Response: %s\n", response.c_str());
+            }
+        } else {
+            Serial.printf("  [WARN] Unexpected status: %d\n", httpCode);
         }
     } else {
-        Serial.printf("[ERROR] POST failed: %s\n", http.errorToString(httpCode).c_str());
+        Serial.printf("  [ERR] POST failed: %s\n", http.errorToString(httpCode).c_str());
+        Serial.println("        Check SERVER_URL, server running, and firewall.");
     }
 
     http.end();
+}
+
+
+// ── WiFi Connection ───────────────────────────────────────────────────
+void connectWiFi() {
+    Serial.printf("[INFO] Connecting to \"%s\"", WIFI_SSID);
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+    int attempts = 0;
+    while (WiFi.status() != WL_CONNECTED && attempts < 40) {
+        delay(500);
+        Serial.print(".");
+        attempts++;
+    }
+    Serial.println();
+
+    if (WiFi.status() == WL_CONNECTED) {
+        Serial.println("[OK]  WiFi connected!");
+        Serial.printf("      IP Address : %s\n", WiFi.localIP().toString().c_str());
+        Serial.printf("      Gateway    : %s\n", WiFi.gatewayIP().toString().c_str());
+        Serial.printf("      Signal     : %d dBm (%s)\n", WiFi.RSSI(), rssiQuality(WiFi.RSSI()));
+    } else {
+        Serial.println("[ERR] WiFi connection FAILED.");
+        Serial.println("      Check SSID, password, and that the network is 2.4 GHz.");
+    }
+}
+
+
+// ── RSSI Quality Helper ───────────────────────────────────────────────
+const char* rssiQuality(int rssi) {
+    if (rssi >= -50) return "Excellent";
+    if (rssi >= -65) return "Good";
+    if (rssi >= -75) return "Fair";
+    if (rssi >= -85) return "Weak";
+    return "Very Weak";
 }
