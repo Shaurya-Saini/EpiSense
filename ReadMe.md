@@ -32,7 +32,7 @@ $$ ORI_{zone} = (\alpha \times E_{score}) + (\beta \times S_{score\_decayed}) $$
 *(Default Hyperparameters: $\alpha = 0.55$, $\beta = 0.45$)*
 
 #### 1. Environmental Score ($E_{score}$)
-The $E_{score}$ is derived by passing the real-time IoT array data (`TDS`, `Turbidity`, `Temp`) through an **XGBoost Classifier**. The model is trained on historical water potability datasets. The $E_{score}$ directly maps to the model's output contamination probability class.
+The $E_{score}$ is derived by passing the real-time IoT array data (`TDS`, `Turbidity`, `Temp`) through the best performing machine learning model. Multiple models were trained on historical water potability datasets, and the best performing one was selected. The $E_{score}$ directly maps to the model's output contamination probability class.
 
 #### 2. Symptomatic Score ($S_{score}$)
 Upon a clinic logging a symptom cluster, a normalized symptomatic burden is calculated based on epidemiological relevance weights:
@@ -44,7 +44,8 @@ $$ S_{score\_initial} = \min\left(\frac{Raw_{burden}}{Population_{zone}}, 1.0\ri
 Clinical reports inherently lose predictive value over time. Thus, the $S_{score}$ experiences continuous exponential decay governed by λ (decay constant, default $\lambda = 0.03 \approx 23h$ half-life).
 
 $$ S_{score\_decayed} = S_{score\_initial} \times e^{-\lambda t} $$
-*(Where $t$ = hours since report submission)*
+
+*(Where t = hours since report submission)*
 
 ---
 
