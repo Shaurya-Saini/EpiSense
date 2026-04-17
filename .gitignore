@@ -30,7 +30,7 @@ share/python-wheels/
 MANIFEST
 
 # Database and Data Files
-Backend/data/
+# Backend/data/ - allow data to be there on github
 
 # IDE and Editor Files
 .vscode/

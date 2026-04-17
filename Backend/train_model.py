@@ -79,35 +79,40 @@ RANDOM_STATE = 42
 TEST_SIZE = 0.10  # Small test split → more training data
 LEAK_RATIO = 0.5  # Fraction of test set to blend back into training
 
-# Colour palette for plots
+# Colour palette for plots (light theme — research paper ready)
 COLOURS = {
-    "primary": "#6C63FF",
-    "secondary": "#FF6584",
-    "accent": "#43E97B",
-    "bg": "#0F0F1A",
-    "card": "#1A1A2E",
-    "text": "#E0E0E0",
-    "grid": "#2A2A40",
+    "primary": "#2563EB",
+    "secondary": "#DC2626",
+    "accent": "#16A34A",
+    "bg": "#FFFFFF",
+    "card": "#FFFFFF",
+    "text": "#1A1A1A",
+    "grid": "#D1D5DB",
 }
 
-MODEL_COLOURS = ["#6C63FF", "#FF6584", "#43E97B", "#FFD93D", "#00B4D8"]
+MODEL_COLOURS = ["#2563EB", "#DC2626", "#16A34A", "#D97706", "#7C3AED"]
 
 # ── Helper: plot styling ─────────────────────────────────────────────
 def setup_plot_style():
-    """Apply dark-theme plot styling globally."""
+    """Apply light-theme plot styling globally (research paper ready)."""
     plt.rcParams.update({
         "figure.facecolor": COLOURS["bg"],
         "axes.facecolor": COLOURS["card"],
-        "axes.edgecolor": COLOURS["grid"],
+        "axes.edgecolor": "#4B5563",
         "axes.labelcolor": COLOURS["text"],
         "text.color": COLOURS["text"],
         "xtick.color": COLOURS["text"],
         "ytick.color": COLOURS["text"],
         "grid.color": COLOURS["grid"],
-        "grid.alpha": 0.3,
-        "font.family": "sans-serif",
+        "grid.alpha": 0.5,
+        "font.family": "serif",
         "font.size": 11,
-        "figure.dpi": 150,
+        "figure.dpi": 300,
+        "savefig.facecolor": "#FFFFFF",
+        "savefig.edgecolor": "none",
+        "legend.framealpha": 1.0,
+        "legend.edgecolor": "#D1D5DB",
+        "legend.facecolor": "#FFFFFF",
     })
 
 
@@ -134,11 +139,11 @@ def plot_class_distribution(df: pd.DataFrame):
 
     # Pie
     axes[0].pie(counts, labels=labels, autopct="%1.1f%%", colors=colors,
-                startangle=90, textprops={"color": COLOURS["text"], "fontsize": 12})
+                startangle=90, textprops={"color": "#1A1A1A", "fontsize": 12})
     axes[0].set_title("Class Distribution", fontsize=14, fontweight="bold")
 
     # Bar
-    bars = axes[1].bar(labels, counts, color=colors, edgecolor="white", linewidth=0.5)
+    bars = axes[1].bar(labels, counts, color=colors, edgecolor="#4B5563", linewidth=0.5)
     axes[1].set_title("Sample Counts by Class", fontsize=14, fontweight="bold")
     axes[1].set_ylabel("Count")
     for bar, c in zip(bars, counts):
@@ -201,7 +206,7 @@ def plot_feature_histograms(df: pd.DataFrame):
         for cls, colour, label in [(0, COLOURS["secondary"], "Not Potable"),
                                     (1, COLOURS["accent"], "Potable")]:
             subset = df[df[TARGET_COLUMN] == cls][feat].dropna()
-            axes[i].hist(subset, bins=30, alpha=0.6, color=colour, label=label, edgecolor="white", linewidth=0.3)
+            axes[i].hist(subset, bins=30, alpha=0.6, color=colour, label=label, edgecolor="#4B5563", linewidth=0.3)
         axes[i].set_title(f"{feat} Distribution", fontsize=13, fontweight="bold")
         axes[i].legend()
     plt.tight_layout()
@@ -397,7 +402,7 @@ def plot_confusion_matrices(results: dict, y_test):
         sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", ax=ax,
                     xticklabels=["Not Potable", "Potable"],
                     yticklabels=["Not Potable", "Potable"],
-                    cbar=False, linewidths=1, linecolor=COLOURS["grid"])
+                    cbar=False, linewidths=1, linecolor="#9CA3AF")
         ax.set_title(f"{name}\nAcc: {results[name]['accuracy']:.3f}", fontsize=12, fontweight="bold")
         ax.set_ylabel("Actual")
         ax.set_xlabel("Predicted")
@@ -419,7 +424,7 @@ def plot_roc_curves(results: dict, y_test):
         ax.plot(fpr, tpr, color=colour, linewidth=2.5,
                 label=f"{name} (AUC = {roc_auc:.3f})")
 
-    ax.plot([0, 1], [0, 1], "w--", linewidth=1, alpha=0.5, label="Random Baseline")
+    ax.plot([0, 1], [0, 1], "k--", linewidth=1, alpha=0.4, label="Random Baseline")
     ax.set_xlim([-0.01, 1.01])
     ax.set_ylim([-0.01, 1.01])
     ax.set_xlabel("False Positive Rate", fontsize=13)
@@ -469,7 +474,7 @@ def plot_model_comparison(results: dict):
     for i, (name, colour) in enumerate(zip(names, MODEL_COLOURS)):
         values = [results[name][m] for m in metrics]
         bars = ax.bar(x + i * width, values, width, label=name, color=colour,
-                      edgecolor="white", linewidth=0.3)
+                      edgecolor="#4B5563", linewidth=0.3)
         for bar, val in zip(bars, values):
             ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.008,
                     f"{val:.3f}", ha="center", fontsize=8, fontweight="bold")
@@ -496,7 +501,7 @@ def plot_cv_scores(results: dict):
     names = list(results.keys())
 
     bp = ax.boxplot(cv_data, labels=names, patch_artist=True, showmeans=True,
-                    meanprops={"marker": "D", "markerfacecolor": "white", "markersize": 7})
+                    meanprops={"marker": "D", "markerfacecolor": "#1A1A1A", "markersize": 7})
 
     for patch, colour in zip(bp["boxes"], MODEL_COLOURS):
         patch.set_facecolor(colour)
@@ -527,7 +532,7 @@ def plot_feature_importance(results: dict):
         indices = np.argsort(importances)[::-1]
 
         ax.barh(range(len(FEATURE_COLUMNS)),
-                importances[indices], color=colour, edgecolor="white", linewidth=0.3)
+                importances[indices], color=colour, edgecolor="#4B5563", linewidth=0.3)
         ax.set_yticks(range(len(FEATURE_COLUMNS)))
         ax.set_yticklabels([FEATURE_COLUMNS[i] for i in indices])
         ax.set_xlabel("Importance")
@@ -596,7 +601,7 @@ def plot_best_model_detail(best_name: str, results: dict, y_test):
     sns.heatmap(cm, annot=True, fmt=".2%", cmap="Purples", ax=axes[0],
                 xticklabels=["Not Potable", "Potable"],
                 yticklabels=["Not Potable", "Potable"],
-                linewidths=1, linecolor=COLOURS["grid"])
+                linewidths=1, linecolor="#9CA3AF")
     axes[0].set_title(f"Best Model: {best_name}\nNormalised Confusion Matrix",
                       fontsize=13, fontweight="bold")
     axes[0].set_ylabel("Actual")
@@ -607,15 +612,15 @@ def plot_best_model_detail(best_name: str, results: dict, y_test):
                                 (1, COLOURS["accent"], "Potable")]:
         mask = y_test == cls
         axes[1].hist(res["y_proba"][mask], bins=25, alpha=0.6, color=colour,
-                     label=label, edgecolor="white", linewidth=0.3)
-    axes[1].axvline(0.5, color="white", linestyle="--", linewidth=1, alpha=0.7, label="Threshold (0.5)")
+                     label=label, edgecolor="#4B5563", linewidth=0.3)
+    axes[1].axvline(0.5, color="#1A1A1A", linestyle="--", linewidth=1, alpha=0.7, label="Threshold (0.5)")
     axes[1].set_title("Prediction Probability Distribution", fontsize=13, fontweight="bold")
     axes[1].set_xlabel("Predicted Probability (Potable)")
     axes[1].set_ylabel("Count")
     axes[1].legend()
 
     plt.suptitle(f"★  Best Model: {best_name}  ★", fontsize=16, fontweight="bold",
-                 color=COLOURS["accent"], y=1.02)
+                 color=COLOURS["primary"], y=1.02)
     plt.tight_layout()
     plt.savefig(os.path.join(GRAPHS_DIR, "13_best_model_detail.png"), bbox_inches="tight")
     plt.close()
